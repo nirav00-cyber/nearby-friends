@@ -34,6 +34,7 @@ export default function Navbar() {
       <div style={{ display: "flex", gap: 10 }}>
         {link("/", "Home")}
         {link("/add-user", "Add User")}
+        { link("/nearbyFriends", "Nearby Friends") }
       </div>
     </nav>
   );

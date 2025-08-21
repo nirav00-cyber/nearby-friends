@@ -4,6 +4,8 @@ import Home from "./pages/Home";
 import AddUser from "./pages/AddUser";
 import UserPage from "./pages/UserPage";
 import "./index.css";
+import NearbyFriends from "./components/NearbyFriends";
+
 
 export default function App() {
   return (
@@ -13,6 +15,7 @@ export default function App() {
         <Route path="/" element={<Home />} />
         <Route path="/add-user" element={<AddUser />} />
         <Route path="/users/:userId" element={<UserPage />} />
+        <Route path="/nearbyfriends" element={<NearbyFriends/>}/>
       </Routes>
     </BrowserRouter>
   );

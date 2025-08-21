@@ -75,29 +75,42 @@ export const getFriends = async (req, res) =>
     }
 }
 
-// Get friends within a radius
+//Get nearby friends based on location
+
 export const getNearbyFriends = async (req, res) => {
-    try {
-        const { userId } = req.params;
-        const { distance } = req.query; // distance in meters
+  try {
+    const { userId } = req.params;
+    const { distance } = req.query; // in meters
 
-        const user = await User.findById(userId);
-        if (!user || !user.location) {
-            return res.status(404).json({ message: "User not found or location not set" });
-        }
-
-        const nearbyFriends = await User.find({
-            _id: { $in: user.friends }, // Only search among friends
-            location: {
-                $near: {
-                    $geometry: user.location,
-                    $maxDistance: parseInt(distance) || 5000 // default 5km
-                }
-            }
-        }).select("name email location");
-
-        res.json(nearbyFriends);
-    } catch (error) {
-        res.status(500).json({ message: error.message });
+    const user = await User.findById(userId);
+    if (!user || !user.location) {
+      return res
+        .status(404)
+        .json({ message: "User not found or location not set" });
     }
+
+    // Use MongoDB $geoNear aggregation to also calculate distance
+    const nearbyFriends = await User.aggregate([
+      {
+        $geoNear: {
+          near: user.location,
+          distanceField: "distance",
+          spherical: true,
+          maxDistance: distance ? parseInt(distance) : undefined,
+          query: { _id: { $in: user.friends.map(f => new mongoose.Types.ObjectId(f)) } }
+        }
+      },
+      {
+        $project: {
+          name: 1,
+          email: 1,
+          distance: { $round: [{ $divide: ["$distance", 1000] }, 2] }, // convert m → km
+        }
+      }
+    ]);
+
+    res.json(nearbyFriends);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
