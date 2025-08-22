@@ -1,5 +1,6 @@
 import User from "../models/user.js";
-
+import mongoose from "mongoose";
+import { calculateDistance } from "../utils/distance.js";
 // Create a new user with location
 export const createUser = async (req, res) => {
     try {
@@ -80,34 +81,42 @@ export const getFriends = async (req, res) =>
 export const getNearbyFriends = async (req, res) => {
   try {
     const { userId } = req.params;
-    const { distance } = req.query; // in meters
+    const { distance } = req.query; // max distance in meters
 
-    const user = await User.findById(userId);
+    const user = await User.findById(userId).populate(
+      "friends",
+      "name email location"
+    );
+
     if (!user || !user.location) {
       return res
         .status(404)
         .json({ message: "User not found or location not set" });
     }
 
-    // Use MongoDB $geoNear aggregation to also calculate distance
-    const nearbyFriends = await User.aggregate([
-      {
-        $geoNear: {
-          near: user.location,
-          distanceField: "distance",
-          spherical: true,
-          maxDistance: distance ? parseInt(distance) : undefined,
-          query: { _id: { $in: user.friends.map(f => new mongoose.Types.ObjectId(f)) } }
-        }
-      },
-      {
-        $project: {
-          name: 1,
-          email: 1,
-          distance: { $round: [{ $divide: ["$distance", 1000] }, 2] }, // convert m → km
-        }
-      }
-    ]);
+    const [userLng, userLat] = user.location.coordinates;
+
+    // Calculate distance for each friend
+    const friendsWithDistance = user.friends
+      .filter(f => f.location) // only if location is set
+      .map(friend => {
+        const [friendLng, friendLat] = friend.location.coordinates;
+        const dist = calculateDistance(userLat, userLng, friendLat, friendLng);
+        return {
+          _id: friend._id,
+          name: friend.name,
+          email: friend.email,
+          distance: Math.round(dist * 100) / 100, // km rounded to 2 decimals
+        };
+      });
+
+    // Filter by distance if query param is provided
+    const nearbyFriends = distance
+      ? friendsWithDistance.filter(f => f.distance * 1000 <= parseInt(distance))
+      : friendsWithDistance;
+
+    // Sort by nearest
+    nearbyFriends.sort((a, b) => a.distance - b.distance);
 
     res.json(nearbyFriends);
   } catch (error) {

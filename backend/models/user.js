@@ -25,4 +25,6 @@ const userSchema = new mongoose.Schema(
 
 userSchema.index({ location: "2dsphere" }); // For geospatial queries
 
+
+
 export default mongoose.model("User", userSchema);

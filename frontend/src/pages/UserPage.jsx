@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import { getUsers, getFriends, addFriend } from "../api/friends";
+import { getUsers, getNearbyFriends, addFriend } from "../api/friends";
 import FriendList from "../components/FriendList";
 
 export default function UserPage() {
@@ -31,9 +31,9 @@ export default function UserPage() {
     if (!userId) return;
     (async () => {
       try {
-        const { data } = await getFriends(userId);
-        // your backend returns an array (populate), use as-is
-        setFriends(Array.isArray(data) ? data : (data?.friends || []));
+        const { data } = await getNearbyFriends(userId);
+        
+        setFriends(Array.isArray(data) ? data : []);
       } catch (e) {
         console.error(e);
         alert("Failed to load friends");
@@ -55,8 +55,8 @@ export default function UserPage() {
     try {
       await addFriend({ userId, friendId: candidateId });
       // refresh friends
-      const { data } = await getFriends(userId);
-      setFriends(Array.isArray(data) ? data : (data?.friends || []));
+      const { data } = await getNearbyFriends(userId);
+      setFriends(Array.isArray(data) ? data : []);
       setCandidateId("");
     } catch (e) {
       console.error(e);

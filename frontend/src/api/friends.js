@@ -17,22 +17,10 @@ export const addFriend = (payload) => api.post("/friends/add-friend", payload);
 
 
 //Get Nearby Friends 
-export async function getNearbyFriends(userId, distance = null)
+export const getNearbyFriends = (userId, distance) =>
 {
-  try
-  {
-    const url = distance 
-      ? `/friends/nearby/${userId}?distance=${distance}` 
-      : `/friends/nearby/${ userId }`;
-    
-    const res = await api.get(url);
-    if(res.status!== 200) {
-      throw new Error("Failed to fetch nearby friends");
-    }
-    return await res.json(); 
-  }
-  catch (error) {
-    console.error("Error fetching nearby friends:", error);
-    return [];
-  }
+  return api.get(`/friends/nearby/${userId}`, {
+    params: { distance },
+  }); 
 }
+
