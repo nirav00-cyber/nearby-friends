@@ -1,0 +1,110 @@
+.nearby-friends {
+  padding: 20px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.nearby-friends-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.controls {
+  display: flex;
+  gap: 10px;
+}
+
+.distance-select {
+  padding: 8px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+}
+
+.refresh-button {
+  padding: 8px 16px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.refresh-button:hover {
+  background-color: #0056b3;
+}
+
+.error-message {
+  padding: 12px;
+  background-color: #fff3f3;
+  color: #dc3545;
+  border: 1px solid #dc3545;
+  border-radius: 4px;
+  margin-bottom: 20px;
+}
+
+.loading-spinner {
+  text-align: center;
+  color: #666;
+  padding: 20px;
+}
+
+.no-friends {
+  text-align: center;
+  color: #666;
+  padding: 20px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+}
+
+.friends-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.friend-card {
+  background-color: white;
+  border-radius: 8px;
+  padding: 15px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s;
+}
+
+.friend-card:hover {
+  transform: translateY(-2px);
+}
+
+.friend-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.friend-details {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  color: #666;
+}
+
+.status-indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.friend-email {
+  font-size: 0.9em;
+  color: #666;
+}
+
+.friend-distance {
+  font-size: 0.9em;
+  color: #007bff;
+}

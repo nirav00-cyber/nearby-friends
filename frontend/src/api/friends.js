@@ -24,3 +24,12 @@ export const getNearbyFriends = (userId, distance) =>
   }); 
 }
 
+export const updateLocation = (userId, { latitude, longitude, online = true }) =>
+{
+  return api.post(`/users/${userId}/location`, { latitude, longitude, online });
+}
+
+export const setAway = (userId) =>
+{
+  return api.post(`/users/${ userId }/away`); 
+}

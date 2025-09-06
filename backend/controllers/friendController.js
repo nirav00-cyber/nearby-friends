@@ -85,7 +85,7 @@ export const getNearbyFriends = async (req, res) => {
 
     const user = await User.findById(userId).populate(
       "friends",
-      "name email location"
+      "name email location online lastSeen lastLocation"
     );
 
     if (!user || !user.location) {
@@ -94,32 +94,101 @@ export const getNearbyFriends = async (req, res) => {
         .json({ message: "User not found or location not set" });
     }
 
-    const [userLng, userLat] = user.location.coordinates;
+    const [userLat, userLng] = user.location.coordinates;
 
-    // Calculate distance for each friend
-    const friendsWithDistance = user.friends
-      .filter(f => f.location) // only if location is set
-      .map(friend => {
-        const [friendLng, friendLat] = friend.location.coordinates;
+    // Calculate distance for each friend (include friends even if they don't have `location`; fall back to `lastLocation`)
+    const friendsWithDistance = user.friends.map((friend) => {
+      const friendCoords = friend.location?.coordinates || friend.lastLocation?.coordinates;
+      let distanceKm = null;
+
+      if (Array.isArray(friendCoords) && friendCoords.length === 2) {
+        const [friendLng, friendLat] = friendCoords;
         const dist = calculateDistance(userLat, userLng, friendLat, friendLng);
-        return {
-          _id: friend._id,
-          name: friend.name,
-          email: friend.email,
-          distance: Math.round(dist * 100) / 100, // km rounded to 2 decimals
-        };
-      });
+        distanceKm = Math.round(dist * 100) / 100; // km rounded to 2 decimals
+      }
+
+      return {
+        _id: friend._id,
+        name: friend.name,
+        email: friend.email,
+        online: !!friend.online,
+        lastSeen: friend.lastSeen || null,
+        distance: distanceKm,
+      };
+    });
 
     // Filter by distance if query param is provided
     const nearbyFriends = distance
       ? friendsWithDistance.filter(f => f.distance * 1000 <= parseInt(distance))
       : friendsWithDistance;
 
-    // Sort by nearest
-    nearbyFriends.sort((a, b) => a.distance - b.distance);
+  // Sort by nearest (treat null distances as Infinity so they go to the end)
+  nearbyFriends.sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
 
     res.json(nearbyFriends);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+
+
+
+// Update user's reported location and set online
+export const updateLocation = async (req, res) =>
+{
+  try
+  {
+    const { id } = req.params; //route will be /api/users/:id/location
+    const { latitude, longitude } = req.body;
+    
+    if (typeof latitude !== 'number' || typeof longitude !== 'number')
+    {
+      return res.status(400).json({ message: "latitude and longitude must be numbers" });
+    }
+
+    const update = {
+      // Update both current location and last location
+      location: {
+        type: "Point",
+        coordinates: [longitude, latitude]
+      },
+      lastLocation: {
+        type: "Point",
+        coordinates: [longitude, latitude]
+      },
+      lastSeen: new Date(),
+      online: true,
+    };
+
+    const user = await User.findByIdAndUpdate(id, update, { new: true });
+    if (!user) return res.status(404).json({ message: "user not found" });
+    res.json({ message: "Location updated", user });
+  
+  }
+  catch (error)
+  {
+    res.status(500).json({ message: error.message });
+    
+  }
+};
+
+
+// mark user away/offline
+
+export const setAway = async (req, res) =>
+{
+  try
+  {
+    const { id } = req.params; 
+    const user = await User.findByIdAndUpdate(id, { online: false, lastSeen: new Date() }, { new: true });
+
+    if (!user) return res.status(404).json({ message: "user not found" }); 
+
+    res.json({ message: "user set to away", user });
+
+  }
+  catch (error)
+  {
+    res.status(500).json({ message: error.message }); 
+  }
+}

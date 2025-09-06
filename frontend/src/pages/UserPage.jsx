@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import { getUsers, getNearbyFriends, addFriend } from "../api/friends";
+import { getUsers, getNearbyFriends, addFriend, updateLocation } from "../api/friends";
 import FriendList from "../components/FriendList";
 
 export default function UserPage() {
@@ -26,19 +26,21 @@ export default function UserPage() {
     })();
   }, [userId]);
 
+  // helper to load friends (reused)
+  const loadFriends = async () => {
+    if (!userId) return;
+    try {
+      const { data } = await getNearbyFriends(userId);
+      setFriends(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error(e);
+      alert("Failed to load friends");
+    }
+  };
+
   // load friends for selected user
   useEffect(() => {
-    if (!userId) return;
-    (async () => {
-      try {
-        const { data } = await getNearbyFriends(userId);
-        
-        setFriends(Array.isArray(data) ? data : []);
-      } catch (e) {
-        console.error(e);
-        alert("Failed to load friends");
-      }
-    })();
+    loadFriends();
   }, [userId]);
 
   const candidates = useMemo(() => {
@@ -55,14 +57,27 @@ export default function UserPage() {
     try {
       await addFriend({ userId, friendId: candidateId });
       // refresh friends
-      const { data } = await getNearbyFriends(userId);
-      setFriends(Array.isArray(data) ? data : []);
+      await loadFriends();
       setCandidateId("");
     } catch (e) {
       console.error(e);
       alert("Failed to add friend");
     } finally {
       setAdding(false);
+    }
+  };
+
+  const handleUpdateLocation = async () => {
+    try {
+      const lat = parseFloat(prompt("Latitude", "12.34"));
+      const lng = parseFloat(prompt("Longitude", "56.78"));
+      if (Number.isNaN(lat) || Number.isNaN(lng)) return alert("Invalid coords");
+
+      await updateLocation(userId, { latitude: lat, longitude: lng, online: true });
+      await loadFriends();
+    } catch (e) {
+      console.error(e);
+      alert("Failed to update location");
     }
   };
 
@@ -78,6 +93,10 @@ export default function UserPage() {
     <div className="page">
       <h1 style={{ marginTop: 0 }}>{selectedUser.name}</h1>
       <div className="muted">{selectedUser.email}</div>
+
+      <div style={{ marginTop: 8 }}>
+        <button className="btn" onClick={handleUpdateLocation}>Update my location</button>
+      </div>
 
       <FriendList friends={friends} />
 
