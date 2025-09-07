@@ -24,12 +24,19 @@ export const getNearbyFriends = (userId, distance) =>
   }); 
 }
 
-export const updateLocation = (userId, { latitude, longitude, online = true }) =>
+export const updateLocation = (userId, { latitude, longitude, online = true } = { online: true }) =>
 {
-  return api.post(`/users/${userId}/location`, { latitude, longitude, online });
+  const payload = { online };
+  // Only add coordinates if they exist
+  if (latitude !== undefined && longitude !== undefined) {
+    payload.latitude = latitude;
+    payload.longitude = longitude;
+  }
+  return api.post(`/users/${userId}/location`, payload);
 }
 
 export const setAway = (userId) =>
 {
-  return api.post(`/users/${ userId }/away`); 
+  console.log(`Setting user ${userId} to away status`);
+  return api.post(`/users/${userId}/away`); 
 }

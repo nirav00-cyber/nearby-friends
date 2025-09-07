@@ -93,8 +93,14 @@ export const getNearbyFriends = async (req, res) => {
         .status(404)
         .json({ message: "User not found or location not set" });
     }
+    
+    console.log(`Getting nearby friends for user ${userId}. Friend count: ${user.friends.length}`);
+    user.friends.forEach(friend => {
+      console.log(`Friend ${friend._id}: ${friend.name}, online: ${friend.online}`);
+    });
 
-    const [userLat, userLng] = user.location.coordinates;
+    // GeoJSON coordinates are stored as [longitude, latitude]
+    const [userLng, userLat] = user.location.coordinates;
 
     // Calculate distance for each friend (include friends even if they don't have `location`; fall back to `lastLocation`)
     const friendsWithDistance = user.friends.map((friend) => {
@@ -139,34 +145,40 @@ export const updateLocation = async (req, res) =>
   try
   {
     const { id } = req.params; //route will be /api/users/:id/location
-    const { latitude, longitude } = req.body;
+    const { latitude, longitude, online = true } = req.body;
     
-    if (typeof latitude !== 'number' || typeof longitude !== 'number')
-    {
-      return res.status(400).json({ message: "latitude and longitude must be numbers" });
-    }
-
+    console.log(`Updating user ${id} status: online=${online}, location: ${latitude ? `[${longitude}, ${latitude}]` : 'not provided'}`);
+    
+    // Create the update object
     const update = {
-      // Update both current location and last location
-      location: {
-        type: "Point",
-        coordinates: [longitude, latitude]
-      },
-      lastLocation: {
-        type: "Point",
-        coordinates: [longitude, latitude]
-      },
       lastSeen: new Date(),
-      online: true,
+      online: online,
     };
+    
+    // Only add location data if both latitude and longitude are provided and are numbers
+    if (typeof latitude === 'number' && typeof longitude === 'number') {
+      update.location = {
+        type: "Point",
+        coordinates: [longitude, latitude]
+      };
+      update.lastLocation = {
+        type: "Point",
+        coordinates: [longitude, latitude]
+      };
+    } else if (latitude !== undefined || longitude !== undefined) {
+      // Only return error if one coordinate is provided but not both, or if they're invalid types
+      return res.status(400).json({ message: "If providing location, both latitude and longitude must be numbers" });
+    }
 
     const user = await User.findByIdAndUpdate(id, update, { new: true });
     if (!user) return res.status(404).json({ message: "user not found" });
+    console.log(`User ${id} updated successfully, online status: ${user.online}`);
     res.json({ message: "Location updated", user });
   
   }
   catch (error)
   {
+    console.error(`Error updating user ${req.params.id}:`, error);
     res.status(500).json({ message: error.message });
     
   }
@@ -180,15 +192,19 @@ export const setAway = async (req, res) =>
   try
   {
     const { id } = req.params; 
+    console.log(`Setting user ${id} to offline status`);
+    
     const user = await User.findByIdAndUpdate(id, { online: false, lastSeen: new Date() }, { new: true });
 
     if (!user) return res.status(404).json({ message: "user not found" }); 
-
+    
+    console.log(`User ${id} set to offline successfully`);
     res.json({ message: "user set to away", user });
 
   }
   catch (error)
   {
+    console.error(`Error setting user ${req.params.id} to away:`, error);
     res.status(500).json({ message: error.message }); 
   }
 }

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { getUsers, getNearbyFriends, addFriend, updateLocation } from "../api/friends";
 import FriendList from "../components/FriendList";
+import { useOnlineStatus } from "../hooks/useOnlineStatus";
 
 export default function UserPage() {
   const { userId } = useParams();
@@ -10,6 +11,10 @@ export default function UserPage() {
   const [friends, setFriends] = useState([]);
   const [adding, setAdding] = useState(false);
   const [candidateId, setCandidateId] = useState("");
+  const [currentLocation, setCurrentLocation] = useState(null);
+  
+  // Use our online status hook to handle presence
+  useOnlineStatus(userId, currentLocation);
 
   // load all users (for dropdown) + identify selected user
   useEffect(() => {
@@ -38,9 +43,18 @@ export default function UserPage() {
     }
   };
 
-  // load friends for selected user
+  // load friends for selected user and set up polling
   useEffect(() => {
     loadFriends();
+    
+    // Set up polling to refresh friends list more frequently for better responsiveness
+    const friendsRefreshInterval = setInterval(() => {
+      loadFriends();
+    }, 5000); // 5 seconds for more responsive updates
+    
+    return () => {
+      clearInterval(friendsRefreshInterval);
+    };
   }, [userId]);
 
   const candidates = useMemo(() => {
@@ -73,7 +87,11 @@ export default function UserPage() {
       const lng = parseFloat(prompt("Longitude", "56.78"));
       if (Number.isNaN(lat) || Number.isNaN(lng)) return alert("Invalid coords");
 
-      await updateLocation(userId, { latitude: lat, longitude: lng, online: true });
+      // Update the current location state so our hook can use it
+      const newLocation = { latitude: lat, longitude: lng };
+      setCurrentLocation(newLocation);
+      
+      await updateLocation(userId, { ...newLocation, online: true });
       await loadFriends();
     } catch (e) {
       console.error(e);
