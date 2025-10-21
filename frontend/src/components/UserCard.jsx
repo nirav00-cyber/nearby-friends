@@ -32,7 +32,7 @@ export default function UserCard({ user, onClick })
         </div>
 
         <div style={{ marginLeft: 12, textAlign: "right", minWidth: 90 }}>
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
             <span
               style={{
                 display: "inline-block",

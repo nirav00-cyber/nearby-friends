@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { getUsers, getNearbyFriends, addFriend, updateLocation } from "../api/friends";
 import FriendList from "../components/FriendList";
 import { useOnlineStatus } from "../hooks/useOnlineStatus";
+import { useGeolocation } from "../hooks/useGeolocation";
 
 export default function UserPage() {
   const { userId } = useParams();
@@ -12,9 +13,28 @@ export default function UserPage() {
   const [adding, setAdding] = useState(false);
   const [candidateId, setCandidateId] = useState("");
   const [currentLocation, setCurrentLocation] = useState(null);
+  const [locationUpdating, setLocationUpdating] = useState(false);
+  
+  // Use geolocation hook to automatically fetch location
+  const { location: geoLocation, error: geoError, loading: geoLoading, refetch } = useGeolocation(false);
   
   // Use our online status hook to handle presence
   useOnlineStatus(userId, currentLocation);
+
+  // Automatically update location when geolocation is fetched
+  useEffect(() => {
+    if (geoLocation && userId) {
+      setCurrentLocation(geoLocation);
+      // Automatically update location on the backend when we first get it
+      updateLocation(userId, { 
+        latitude: geoLocation.latitude, 
+        longitude: geoLocation.longitude, 
+        online: true 
+      }).catch(err => {
+        console.error('Failed to auto-update location:', err);
+      });
+    }
+  }, [geoLocation, userId]);
 
   // load all users (for dropdown) + identify selected user
   useEffect(() => {
@@ -82,20 +102,21 @@ export default function UserPage() {
   };
 
   const handleUpdateLocation = async () => {
+    setLocationUpdating(true);
     try {
-      const lat = parseFloat(prompt("Latitude", "12.34"));
-      const lng = parseFloat(prompt("Longitude", "56.78"));
-      if (Number.isNaN(lat) || Number.isNaN(lng)) return alert("Invalid coords");
-
-      // Update the current location state so our hook can use it
-      const newLocation = { latitude: lat, longitude: lng };
-      setCurrentLocation(newLocation);
+      // Refetch location from browser
+      await refetch();
       
-      await updateLocation(userId, { ...newLocation, online: true });
-      await loadFriends();
+      // The useEffect will automatically handle updating the backend
+      // But we'll also trigger a friends refresh
+      setTimeout(() => {
+        loadFriends();
+        setLocationUpdating(false);
+      }, 1000);
     } catch (e) {
       console.error(e);
       alert("Failed to update location");
+      setLocationUpdating(false);
     }
   };
 
@@ -112,8 +133,26 @@ export default function UserPage() {
       <h1 style={{ marginTop: 0 }}>{selectedUser.name}</h1>
       <div className="muted">{selectedUser.email}</div>
 
-      <div style={{ marginTop: 8 }}>
-        <button className="btn" onClick={handleUpdateLocation}>Update my location</button>
+      <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center' }}>
+        <button 
+          className="btn" 
+          onClick={handleUpdateLocation}
+          disabled={locationUpdating || geoLoading}
+        >
+          {locationUpdating || geoLoading ? "Updating location…" : "Update my location"}
+        </button>
+        
+        {currentLocation && (
+          <div style={{ fontSize: 12, color: '#64748b' }}>
+            📍 {currentLocation.latitude.toFixed(4)}, {currentLocation.longitude.toFixed(4)}
+          </div>
+        )}
+        
+        {geoError && (
+          <div style={{ fontSize: 12, color: '#ef4444' }}>
+            ⚠️ {geoError}
+          </div>
+        )}
       </div>
 
       <FriendList friends={friends} />
